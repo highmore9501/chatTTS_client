@@ -1,9 +1,5 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import os
-import time
 import subprocess
-from datetime import datetime
 from typing import List
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -20,8 +16,8 @@ class TextToWavRequest(BaseModel):
 
 
 class TextToWavResponse(BaseModel):
-    wav: FileResponse
-    lip_sync_data: FileResponse
+    wav_url: str
+    lip_sync_data_url: str
 
 
 chat = ChatTTS.Chat()
@@ -61,11 +57,10 @@ async def text_to_wav_and_lip_sync(request: TextToWavRequest):
     # Convert WAV to lip sync data
     wav_to_lip_sync_data(wav_file_name, lip_sync_data_file_name)
 
-    # Return FileResponse for the WAV and lip sync data
+    # Return URLs for the WAV and lip sync data (assuming they are served statically)
     return TextToWavResponse(
-        wav=FileResponse(path=wav_file_name, media_type="audio/wav"),
-        lip_sync_data=FileResponse(
-            path=lip_sync_data_file_name, media_type="application/json")
+        wav_url=f'{unique_filename}.wav',
+        lip_sync_data_url=f'{unique_filename}.json'
     )
 
 # For serving static files like WAV and JSON
@@ -75,8 +70,3 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8899)
-
-
-"""
-curl -X POST "http://localhost:8899/text-to-wav-and-lip-sync" -H "accept: application/json" -d '{"texts": ["PUT YOUR TEXT HERE"], "timestamp": "20230401-120000"}'
-"""

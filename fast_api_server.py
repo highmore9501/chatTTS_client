@@ -1,23 +1,27 @@
 from fastapi.staticfiles import StaticFiles
 import subprocess
 from typing import List
-from fastapi import FastAPI
 from pydantic import BaseModel
 import torchaudio
 import ChatTTS
 import torch
+from tencent import generateReply
+from fastapi import FastAPI, HTTPException
+import random
+
 
 app = FastAPI()
 
 
-class TextToWavRequest(BaseModel):
-    texts: List[str]
-    task_id: str  # 添加一个任务ID
+class RequestModel(BaseModel):
+    userMessages: str
+    systemPrompt: str
 
 
 class TextToWavResponse(BaseModel):
     wav_url: str
     lip_sync_data_url: str
+    ai_reply: str
 
 
 chat = ChatTTS.Chat()
@@ -41,15 +45,19 @@ def wav_to_lip_sync_data(wav_file: str, output_file: str):
     return output_file
 
 
-@app.post("/text-to-wav-and-lip-sync", response_model=TextToWavResponse)
-async def text_to_wav_and_lip_sync(request: TextToWavRequest):
-    # Generate unique filenames based on the timestamp
-    unique_filename = request.task_id
+@app.post("/generate-reply/")
+async def api_generate_reply(request: RequestModel):
+    if not request.userMessages or not request.systemPrompt:
+        raise HTTPException(
+            status_code=400, detail="Both 'userMessages' and 'systemPrompt' are required and must be non-empty strings.")
+    aiReply = generateReply(request.userMessages, request.systemPrompt)
+
+    unique_filename = random.randint(0, 1000000)
     wav_file_name = f'static/{unique_filename}.wav'
     lip_sync_data_file_name = f'static/{unique_filename}.json'
 
     # Convert text to WAV
-    wav = text_to_wav(request.texts)
+    wav = text_to_wav([aiReply])
 
     # Save the WAV file
     torchaudio.save(wav_file_name, torch.from_numpy(wav), 24000)
@@ -60,7 +68,8 @@ async def text_to_wav_and_lip_sync(request: TextToWavRequest):
     # Return URLs for the WAV and lip sync data (assuming they are served statically)
     return TextToWavResponse(
         wav_url=f'{unique_filename}.wav',
-        lip_sync_data_url=f'{unique_filename}.json'
+        lip_sync_data_url=f'{unique_filename}.json',
+        ai_reply=aiReply
     )
 
 # For serving static files like WAV and JSON

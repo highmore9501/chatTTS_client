@@ -6,7 +6,10 @@ from tencentcloud.common.profile.http_profile import HttpProfile
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 from tencentcloud.hunyuan.v20230901 import hunyuan_client, models
 
+from dotenv import load_dotenv
 import os
+
+load_dotenv()  # 这会自动从.env文件加载环境变量
 
 
 def generateReply(userMessages, systemPrompt):
